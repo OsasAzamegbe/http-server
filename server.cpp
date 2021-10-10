@@ -4,6 +4,7 @@
 int main()
 {
     using namespace http;
+    
     TcpServer server = TcpServer();
     std::cout << "Compiled bitch" << std::endl;
 
