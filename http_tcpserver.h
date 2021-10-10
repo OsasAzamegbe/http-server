@@ -12,8 +12,9 @@ namespace http
     class TcpServer
     {
     public:
-        TcpServer();
+        TcpServer(int port);
         ~TcpServer();
+        void startListen();
 
     private:
         int m_port;
