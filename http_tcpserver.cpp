@@ -80,7 +80,7 @@ namespace http
         }
 
         std::ostringstream ss;
-        ss << "*** Listening on PORT: " << m_port << " ***\n\n";
+        ss << "*** Listening on ADDRESS: " << m_socketAddress.sin_addr.s_addr << " PORT: " << m_socketAddress.sin_port << " ***\n\n";
         log(ss.str());
 
         while (true)
