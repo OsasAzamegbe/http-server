@@ -23,10 +23,10 @@ namespace
 namespace http
 {
 
-    TcpServer::TcpServer(std::string ip_address,int port) : m_ip_address(ip_address), m_port(port), m_socket(), m_new_socket(),
-                                     m_incomingMessage(),
-                                     m_socketAddress(), m_socketAddress_len(sizeof(m_socketAddress)),
-                                     m_serverMessage("Server has started..."), m_wsaData()
+    TcpServer::TcpServer(std::string ip_address, int port) : m_ip_address(ip_address), m_port(port), m_socket(), m_new_socket(),
+                                                             m_incomingMessage(),
+                                                             m_socketAddress(), m_socketAddress_len(sizeof(m_socketAddress)),
+                                                             m_serverMessage(buildResponse()), m_wsaData()
     {
         m_socketAddress.sin_family = AF_INET;
         m_socketAddress.sin_port = htons(m_port);
@@ -88,6 +88,7 @@ namespace http
         log(ss.str());
 
         int bytesReceived;
+
         while (true)
         {
             log("====== Waiting for a new connection ======\n\n\n");
@@ -101,17 +102,10 @@ namespace http
             }
 
             std::ostringstream ss;
-            ss << "------ Received message from client ------\n" << buffer;
+            ss << "------ Received Request from client ------\n\n";
             log(ss.str());
 
-            if (send(m_new_socket, m_serverMessage.c_str(), sizeof(m_serverMessage), 0) < 0)
-            {
-                log("Error sending response to client");
-            }
-            else
-            {
-                log("------ Server response sent to client ------\n" + m_serverMessage);
-            }
+            sendResponse();
 
             closesocket(m_new_socket);
         }
@@ -125,6 +119,41 @@ namespace http
             std::ostringstream ss;
             ss << "Server failed to accept incoming connection from ADDRESS: " << inet_ntoa(m_socketAddress.sin_addr) << "; PORT: " << ntohs(m_socketAddress.sin_port);
             exitWithError(ss.str());
+        }
+    }
+
+    std::string TcpServer::buildResponse()
+    {
+        std::string htmlFile = "<!DOCTYPE html><html lang=\"en\"><body><h1> HOME </h1><p> Hello from your Server :) </p></body></html>";
+        std::ostringstream ss;
+        ss << "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length: " << htmlFile.size() << "\n\n"
+           << htmlFile;
+
+        return ss.str();
+    }
+
+    void TcpServer::sendResponse()
+    {
+        int bytesSent;
+        long totalBytesSent = 0;
+
+        while (totalBytesSent < m_serverMessage.size())
+        {
+            bytesSent = send(m_new_socket, m_serverMessage.c_str(), m_serverMessage.size(), 0);
+            if (bytesSent < 0)
+            {
+                break;
+            }
+            totalBytesSent += bytesSent;
+        }
+
+        if (totalBytesSent == m_serverMessage.size())
+        {
+            log("------ Server Response sent to client ------\n\n");
+        }
+        else
+        {
+            log("Error sending response to client.");
         }
     }
 

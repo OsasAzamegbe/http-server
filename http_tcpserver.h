@@ -30,6 +30,8 @@ namespace http
         int startServer();
         void closeServer();
         void acceptConnection(SOCKET &new_socket);
+        std::string buildResponse();
+        void sendResponse();
     };
 
 } // namespace http
