@@ -7,7 +7,6 @@ add_executable(Http server.cpp http_tcpserver.cpp)
 target_include_directories(Http PRIVATE .)
 
 target_link_libraries(Http libwsock32.a)
-target_include_directories(Http PUBLIC "C:/mysys64/MinGW/lib")
 
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 11)
