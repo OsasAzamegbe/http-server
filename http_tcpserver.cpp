@@ -5,6 +5,8 @@
 
 namespace
 {
+    const int BUFFER_SIZE = 30720;
+
     void log(const std::string &message)
     {
         std::cout << message << std::endl;
@@ -21,18 +23,20 @@ namespace
 namespace http
 {
 
-    TcpServer::TcpServer(int port) : m_port(port), m_socket(), m_new_socket(),
+    TcpServer::TcpServer(std::string ip_address,int port) : m_ip_address(ip_address), m_port(port), m_socket(), m_new_socket(),
                                      m_incomingMessage(),
                                      m_socketAddress(), m_socketAddress_len(sizeof(m_socketAddress)),
                                      m_serverMessage("Server has started..."), m_wsaData()
     {
         m_socketAddress.sin_family = AF_INET;
-        m_socketAddress.sin_port = m_port;
-        m_socketAddress.sin_addr.s_addr = INADDR_ANY;
+        m_socketAddress.sin_port = htons(m_port);
+        m_socketAddress.sin_addr.s_addr = inet_addr(m_ip_address.c_str());
 
-        if (startServer() == 0)
+        if (startServer() != 0)
         {
-            log("Socket created");
+            std::ostringstream ss;
+            ss << "Failed to start server with PORT: " << ntohs(m_socketAddress.sin_port);
+            log(ss.str());
         }
     }
 
@@ -80,28 +84,47 @@ namespace http
         }
 
         std::ostringstream ss;
-        ss << "*** Listening on ADDRESS: " << m_socketAddress.sin_addr.s_addr << " PORT: " << m_socketAddress.sin_port << " ***\n\n";
+        ss << "\n*** Listening on ADDRESS: " << inet_ntoa(m_socketAddress.sin_addr) << " PORT: " << ntohs(m_socketAddress.sin_port) << " ***\n\n";
         log(ss.str());
 
+        int bytesReceived;
         while (true)
         {
             log("====== Waiting for a new connection ======\n\n\n");
-            m_new_socket = accept(m_socket, (sockaddr *)&m_socketAddress, &m_socketAddress_len);
-            if (m_new_socket < 0)
+            acceptConnection(m_new_socket);
+
+            char buffer[BUFFER_SIZE] = {0};
+            bytesReceived = recv(m_new_socket, buffer, BUFFER_SIZE, 0);
+            if (bytesReceived < 0)
             {
-                ss.clear();
-                ss << "Server failed to accept incoming connection from ADDRESS: " << m_socketAddress.sin_addr.s_addr << "; PORT: " << m_socketAddress.sin_port;
-                exitWithError(ss.str());
+                exitWithError("Failed to receive bytes from client socket connection");
             }
 
-            char buffer[BUFSIZ] = {0};
-            read(m_new_socket, buffer, BUFSIZ);
-            ss.clear();
-            ss << "------ Received message from client: " << buffer << " ------";
+            std::ostringstream ss;
+            ss << "------ Received message from client ------\n" << buffer;
             log(ss.str());
-            write(m_new_socket, m_serverMessage.c_str(), sizeof(m_serverMessage));
-            log("------ Server response sent to client ------");
+
+            if (send(m_new_socket, m_serverMessage.c_str(), sizeof(m_serverMessage), 0) < 0)
+            {
+                log("Error sending response to client");
+            }
+            else
+            {
+                log("------ Server response sent to client ------\n" + m_serverMessage);
+            }
+
             closesocket(m_new_socket);
+        }
+    }
+
+    void TcpServer::acceptConnection(SOCKET &new_socket)
+    {
+        new_socket = accept(m_socket, (sockaddr *)&m_socketAddress, &m_socketAddress_len);
+        if (new_socket < 0)
+        {
+            std::ostringstream ss;
+            ss << "Server failed to accept incoming connection from ADDRESS: " << inet_ntoa(m_socketAddress.sin_addr) << "; PORT: " << ntohs(m_socketAddress.sin_port);
+            exitWithError(ss.str());
         }
     }
 
